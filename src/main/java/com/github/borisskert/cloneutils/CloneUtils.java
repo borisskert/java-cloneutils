@@ -18,6 +18,10 @@ public class CloneUtils {
     private static ObjectMapper nonNullMapper;
     private static ObjectMapper nonFailingMapper;
 
+    private CloneUtils() {
+        throw new IllegalStateException();
+    }
+
     static {
         nonNullMapper = new ObjectMapper();
         nonNullMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -27,28 +31,28 @@ public class CloneUtils {
         nonFailingMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-    public static <T, S> T deepClone(S object, Class<T> targetClass, String... ignoredProperties) {
+    public static <T, S> T deepClone(S object, Class<T> targetClass, String... ignoredProperties) throws CloneException {
         if (object == null) return null;
 
         Map<String, Object> objectAsMap = toMap(object, ignoredProperties);
         return fromMap(objectAsMap, targetClass);
     }
 
-    public static <T> T deepClone(T object, String... ignoredProperties) {
+    public static <T> T deepClone(T object, String... ignoredProperties) throws CloneException {
         if (object == null) return null;
 
         Map<String, Object> objectAsMap = toMap(object, ignoredProperties);
         return (T) fromMap(objectAsMap, object.getClass());
     }
 
-    public static <T, S> S deepPatch(S origin, T patch, String... ignoredProperties) {
+    public static <T, S> S deepPatch(S origin, T patch, String... ignoredProperties) throws CloneException {
         if (origin == null) return null;
 
         Map<String, Object> patchAsMap = toMap(patch, ignoredProperties);
         return patchFromMap(origin, patchAsMap);
     }
 
-    public static <T, S, C> C deepPatch(S origin, T patch, Class<C> targetClass, String... ignoredProperties) {
+    public static <T, S, C> C deepPatch(S origin, T patch, Class<C> targetClass, String... ignoredProperties) throws CloneException {
         if (origin == null) return null;
 
         Map<String, Object> patchAsMap = toMap(patch, ignoredProperties);
@@ -58,7 +62,7 @@ public class CloneUtils {
     /**
      * This patch will not merge list properties
      */
-    public static <T, S, C> C patch(S origin, T patch, Class<C> targetClass, String... ignoredProperties) {
+    public static <T, S, C> C patch(S origin, T patch, Class<C> targetClass, String... ignoredProperties) throws CloneException {
         if (origin == null) return null;
 
         S clonedOrigin = CloneUtils.deepClone(origin);
@@ -70,7 +74,7 @@ public class CloneUtils {
     /**
      * This patch will not merge list properties
      */
-    public static <T, S> S patch(S origin, T patch, String... ignoredProperties) {
+    public static <T, S> S patch(S origin, T patch, String... ignoredProperties) throws CloneException {
         if (origin == null) return null;
 
         S clonedOrigin = CloneUtils.deepClone(origin);
@@ -79,28 +83,28 @@ public class CloneUtils {
         return (S) patch(clonedOrigin, patchWithoutIgnoredProperties, origin.getClass());
     }
 
-    public static <T, S> S deepPatchFieldsOnly(S origin, T patch, String... onlyThisFields) {
+    public static <T, S> S deepPatchFieldsOnly(S origin, T patch, String... onlyThisFields) throws CloneException {
         if (origin == null) return null;
 
         Map<String, Object> patchAsMap = toMapFilteredBy(patch, onlyThisFields);
         return patchFromMap(origin, patchAsMap);
     }
 
-    public static <S, T> boolean deepEquals(S origin, T other, String... ignoredProperties) {
+    public static <S, T> boolean deepEquals(S origin, T other, String... ignoredProperties) throws CloneException {
         Map<String, Object> originAsMap = toMap(origin, ignoredProperties);
         Map<String, Object> otherAsMap = toMap(other, ignoredProperties);
 
         return Objects.equals(originAsMap, otherAsMap);
     }
 
-    private static <S> Map<String, Object> toMap(S object, String... ignoredProperties) {
+    private static <S> Map<String, Object> toMap(S object, String... ignoredProperties) throws CloneException {
         JsonNode objectAsNode = toJsonNode(object, ignoredProperties);
         Map objectAsMap;
 
         try {
             objectAsMap = nonFailingMapper.treeToValue(objectAsNode, Map.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new CloneException(e);
         }
 
         return objectAsMap;
@@ -114,14 +118,14 @@ public class CloneUtils {
         return objectAsNode;
     }
 
-    private static <S> Map<String, Object> toMapFilteredBy(S object, String... allowedKeys) {
+    private static <S> Map<String, Object> toMapFilteredBy(S object, String... allowedKeys) throws CloneException {
         JsonNode objectAsNode = nonNullMapper.valueToTree(object);
         Map<String, Object> objectAsMap;
 
         try {
             objectAsMap = nonFailingMapper.treeToValue(objectAsNode, Map.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new CloneException(e);
         }
 
         Map<String, Object> filteredMap = new HashMap<>();
@@ -133,12 +137,12 @@ public class CloneUtils {
         return filteredMap;
     }
 
-    private static <T> T fromMap(Map<String, Object> map, Class<T> targetClass) {
+    private static <T> T fromMap(Map<String, Object> map, Class<T> targetClass) throws CloneException {
         JsonNode mapAsNode = nonNullMapper.valueToTree(map);
         try {
             return nonFailingMapper.treeToValue(mapAsNode, targetClass);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new CloneException(e);
         }
     }
 
@@ -150,7 +154,7 @@ public class CloneUtils {
             nonNullMapper.readerForUpdating(originAsNode).readValue(patchAsNode);
             return (T) nonFailingMapper.treeToValue(originAsNode, origin.getClass());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CloneException(e);
         }
     }
 
@@ -162,7 +166,7 @@ public class CloneUtils {
             nonNullMapper.readerForUpdating(originAsNode).readValue(patchAsNode);
             return nonFailingMapper.treeToValue(originAsNode, targetClass);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CloneException(e);
         }
     }
 
@@ -175,7 +179,7 @@ public class CloneUtils {
 
             return nonFailingMapper.treeToValue(originAsNode, targetClass);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CloneException(e);
         }
     }
 
@@ -234,10 +238,7 @@ public class CloneUtils {
 
     private static String[] cutFirstElement(String[] array) {
         String[] arrayWithoutFirst = new String[array.length - 1];
-
-        if (array.length - 1 >= 0) {
-            System.arraycopy(array, 1, arrayWithoutFirst, 0, array.length - 1);
-        }
+        System.arraycopy(array, 1, arrayWithoutFirst, 0, array.length - 1);
 
         return arrayWithoutFirst;
     }
