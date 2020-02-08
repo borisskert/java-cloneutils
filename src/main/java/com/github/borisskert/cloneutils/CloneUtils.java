@@ -14,10 +14,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 
+/**
+ * Utility class to clone Plain Old Java Objects (POJOs).
+ * Attention: this class uses jackson's {@link ObjectMapper}
+ */
 public class CloneUtils {
     private static ObjectMapper nonNullMapper;
     private static ObjectMapper nonFailingMapper;
 
+    /**
+     * Prevent instance creation
+     */
     private CloneUtils() {
         throw new IllegalStateException();
     }
@@ -31,6 +38,17 @@ public class CloneUtils {
         nonFailingMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
+    /**
+     * Creates an deep clone of the specified object which will be returned as a new instance of the specified {@link Class}
+     *
+     * @param object            the specified object to be cloned (may be null)
+     * @param targetClass       the target {@link Class}
+     * @param ignoredProperties the property names which will be ignored during cloning
+     * @param <T>               the target class type
+     * @param <S>               the source class type
+     * @return a new instance of the cloned object or null if the specified object is null
+     * @throws CloneException if something fails
+     */
     public static <T, S> T deepClone(S object, Class<T> targetClass, String... ignoredProperties) throws CloneException {
         if (object == null) return null;
 
@@ -38,6 +56,15 @@ public class CloneUtils {
         return fromMap(objectAsMap, targetClass);
     }
 
+    /**
+     * Creates an deep clone of the specified object which will be returned as new instance same type
+     *
+     * @param object            the specified object to be cloned (may be null)
+     * @param ignoredProperties the property names which will be ignored during cloning
+     * @param <T>               the source and target type
+     * @return a new instance of the cloned object or null if the specified object is null
+     * @throws CloneException if something fails
+     */
     public static <T> T deepClone(T object, String... ignoredProperties) throws CloneException {
         if (object == null) return null;
 
@@ -45,6 +72,17 @@ public class CloneUtils {
         return (T) fromMap(objectAsMap, object.getClass());
     }
 
+    /**
+     * Clones and patches a specified object and return a new instance same type
+     *
+     * @param origin            the object to be cloned (may be null)
+     * @param patch             the patch which will be applied
+     * @param ignoredProperties the property names to be ignored during cloning
+     * @param <T>               the patch type
+     * @param <S>               the source object type
+     * @return a new instance of the cloned and patched object
+     * @throws CloneException if something fails
+     */
     public static <T, S> S deepPatch(S origin, T patch, String... ignoredProperties) throws CloneException {
         if (origin == null) return null;
 
@@ -52,6 +90,19 @@ public class CloneUtils {
         return patchFromMap(origin, patchAsMap);
     }
 
+    /**
+     * Clones and patches a specified object and return a new instance of the specified {@link Class}
+     *
+     * @param origin            the source object to be cloned (may be null)
+     * @param patch             the patch which will be applied
+     * @param targetClass       the target type as {@link Class}
+     * @param ignoredProperties the property names which will be ignored during cloning
+     * @param <T>               the patch type
+     * @param <S>               the source class type
+     * @param <C>               the target class type
+     * @return a new instance of the cloned object or null if the specified object is null
+     * @throws CloneException if something fails
+     */
     public static <T, S, C> C deepPatch(S origin, T patch, Class<C> targetClass, String... ignoredProperties) throws CloneException {
         if (origin == null) return null;
 
@@ -83,6 +134,17 @@ public class CloneUtils {
         return (S) patch(clonedOrigin, patchWithoutIgnoredProperties, origin.getClass());
     }
 
+    /**
+     * Clones and patches fields only of a specified object and return a new instance same type
+     *
+     * @param origin         the object to be cloned (may be null)
+     * @param patch          the patch to be applied
+     * @param onlyThisFields property names which will be patched
+     * @param <T>            the patch type
+     * @param <S>            the source and target type
+     * @return a new instance of the cloned object or null if the specified object is null
+     * @throws CloneException if something fails
+     */
     public static <T, S> S deepPatchFieldsOnly(S origin, T patch, String... onlyThisFields) throws CloneException {
         if (origin == null) return null;
 
@@ -90,9 +152,40 @@ public class CloneUtils {
         return patchFromMap(origin, patchAsMap);
     }
 
-    public static <S, T> boolean deepEquals(S origin, T other, String... ignoredProperties) throws CloneException {
-        Map<String, Object> originAsMap = toMap(origin, ignoredProperties);
-        Map<String, Object> otherAsMap = toMap(other, ignoredProperties);
+    /**
+     * Clones and patches fields only of a specified object and return a new instance of the specified {@link Class}
+     *
+     * @param origin         the object to be cloned (may be null)
+     * @param patch          the patch to be applied
+     * @param targetClass    the target type as {@link Class}
+     * @param onlyThisFields property names which will be patched
+     * @param <T>            the patch type
+     * @param <S>            the source object type
+     * @param <C>            the target object type
+     * @return a new instance of the cloned object or null if the specified object is null
+     * @throws CloneException if something fails
+     */
+    public static <T, S, C> C deepPatchFieldsOnly(S origin, T patch, Class<C> targetClass, String... onlyThisFields) throws CloneException {
+        if (origin == null) return null;
+
+        Map<String, Object> patchAsMap = toMapFilteredBy(patch, onlyThisFields);
+        return patchFromMap(origin, patchAsMap, targetClass);
+    }
+
+    /**
+     * Indicates if two specified objects equal deep
+     *
+     * @param right             the left object
+     * @param left              the right object
+     * @param ignoredProperties the property names which will be ignored during the check
+     * @param <S>               the left item type
+     * @param <T>               the right item type
+     * @return true if the properties are equal (except the ignored ones), false if not
+     * @throws CloneException if something fails
+     */
+    public static <S, T> boolean deepEquals(S right, T left, String... ignoredProperties) throws CloneException {
+        Map<String, Object> originAsMap = toMap(right, ignoredProperties);
+        Map<String, Object> otherAsMap = toMap(left, ignoredProperties);
 
         return Objects.equals(originAsMap, otherAsMap);
     }

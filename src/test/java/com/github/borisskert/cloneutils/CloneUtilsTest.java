@@ -296,9 +296,8 @@ class CloneUtilsTest {
         assertThat(cloned.getInnerTestObjectProperty().getInnerInnerTestObjectProperty().getDoubleProperty(), is(87.32));
     }
 
-
     @Test
-    public void shouldPatch() throws Exception {
+    public void shouldDeepPatchToSameType() throws Exception {
         TestObject origin = new TestObject(
                 "my string",
                 1234,
@@ -345,6 +344,173 @@ class CloneUtilsTest {
         assertThat(patched.getLocalDateTimeProperty(), is(nullValue()));
 
         TestObject.InnerTestObject patchedInnerObject = patched.getInnerTestObjectProperty();
+        assertThat(patchedInnerObject.getStringProperty(), is(equalTo(patch.getInnerTestObjectProperty().getStringProperty())));
+        assertThat(patchedInnerObject.getIntegerProperty(), is(equalTo(patch.getInnerTestObjectProperty().getIntegerProperty())));
+        assertThat(patchedInnerObject.getDoubleProperty(), is(equalTo(origin.getInnerTestObjectProperty().getDoubleProperty())));
+
+        assertThat(origin, is(equalTo(cloned)));
+    }
+
+    @Test
+    public void shouldDeepPatchFieldsOnlyToSameType() throws Exception {
+        TestObject origin = new TestObject(
+                "my string",
+                1234,
+                123.123,
+                1235L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string",
+                        4321,
+                        52.72,
+                        null,
+                        null
+                ),
+                null
+        );
+
+        TestObject patch = new TestObject(
+                "my string 1",
+                4321,
+                432.19,
+                1234L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string 1",
+                        4322,
+                        null,
+                        null,
+                        null
+                ),
+                null
+        );
+
+        TestObject cloneForBackup = CloneUtils.deepClone(origin);
+
+        TestObject patched = CloneUtils.deepPatchFieldsOnly(origin, patch, "stringProperty", "doubleProperty");
+
+        assertThat(patched.getStringProperty(), is(equalTo(patch.getStringProperty())));
+        assertThat(patched.getIntegerProperty(), is(equalTo(origin.getIntegerProperty())));
+        assertThat(patched.getDoubleProperty(), is(equalTo(patch.getDoubleProperty())));
+        assertThat(patched.getLongProperty(), is(equalTo(origin.getLongProperty())));
+        assertThat(patched.getLocalDateProperty(), is(nullValue()));
+        assertThat(patched.getLocalDateTimeProperty(), is(nullValue()));
+
+        TestObject.InnerTestObject patchedInnerObject = patched.getInnerTestObjectProperty();
+        assertThat(patchedInnerObject.getStringProperty(), is(equalTo(origin.getInnerTestObjectProperty().getStringProperty())));
+        assertThat(patchedInnerObject.getIntegerProperty(), is(equalTo(origin.getInnerTestObjectProperty().getIntegerProperty())));
+        assertThat(patchedInnerObject.getDoubleProperty(), is(equalTo(origin.getInnerTestObjectProperty().getDoubleProperty())));
+
+        // the original item should not be modified
+        assertThat(origin, is(equalTo(cloneForBackup)));
+    }
+
+    @Test
+    public void shouldDeepPatchFieldsOnlyToDifferentType() throws Exception {
+        TestObject origin = new TestObject(
+                "my string",
+                1234,
+                123.123,
+                1235L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string",
+                        4321,
+                        52.72,
+                        null,
+                        null
+                ),
+                null
+        );
+
+        TestObject patch = new TestObject(
+                "my string 1",
+                4321,
+                432.19,
+                1234L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string 1",
+                        4322,
+                        null,
+                        null,
+                        null
+                ),
+                null
+        );
+
+        TestObject cloneForBackup = CloneUtils.deepClone(origin);
+
+        OtherTestObject patched = CloneUtils.deepPatchFieldsOnly(origin, patch, OtherTestObject.class, "stringProperty", "doubleProperty");
+
+        assertThat(patched.getStringProperty(), is(equalTo(patch.getStringProperty())));
+        assertThat(patched.getIntegerProperty(), is(equalTo(origin.getIntegerProperty())));
+        assertThat(patched.getDoubleProperty(), is(equalTo(patch.getDoubleProperty())));
+        assertThat(patched.getLongProperty(), is(equalTo(origin.getLongProperty())));
+        assertThat(patched.getLocalDateProperty(), is(nullValue()));
+        assertThat(patched.getLocalDateTimeProperty(), is(nullValue()));
+
+        OtherTestObject.InnerTestObject patchedInnerObject = patched.getInnerTestObjectProperty();
+        assertThat(patchedInnerObject.getStringProperty(), is(equalTo(origin.getInnerTestObjectProperty().getStringProperty())));
+        assertThat(patchedInnerObject.getIntegerProperty(), is(equalTo(origin.getInnerTestObjectProperty().getIntegerProperty())));
+        assertThat(patchedInnerObject.getDoubleProperty(), is(equalTo(origin.getInnerTestObjectProperty().getDoubleProperty())));
+
+        // the original item should not be modified
+        assertThat(origin, is(equalTo(cloneForBackup)));
+    }
+
+    @Test
+    public void shouldDeepPatchToDifferentType() throws Exception {
+        TestObject origin = new TestObject(
+                "my string",
+                1234,
+                123.123,
+                1235L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string",
+                        4321,
+                        52.72,
+                        null,
+                        null
+                ),
+                null
+        );
+
+        TestObject patch = new TestObject(
+                "my string 1",
+                null,
+                null,
+                1235L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string 1",
+                        4322,
+                        null,
+                        null,
+                        null
+                ),
+                null
+        );
+
+        TestObject cloned = CloneUtils.deepClone(origin);
+
+        OtherTestObject patched = CloneUtils.deepPatch(origin, patch, OtherTestObject.class);
+
+        assertThat(patched.getStringProperty(), is(equalTo(patch.getStringProperty())));
+        assertThat(patched.getIntegerProperty(), is(equalTo(origin.getIntegerProperty())));
+        assertThat(patched.getDoubleProperty(), is(equalTo(origin.getDoubleProperty())));
+        assertThat(patched.getLongProperty(), is(equalTo(patch.getLongProperty())));
+        assertThat(patched.getLocalDateProperty(), is(nullValue()));
+        assertThat(patched.getLocalDateTimeProperty(), is(nullValue()));
+
+        OtherTestObject.InnerTestObject patchedInnerObject = patched.getInnerTestObjectProperty();
         assertThat(patchedInnerObject.getStringProperty(), is(equalTo(patch.getInnerTestObjectProperty().getStringProperty())));
         assertThat(patchedInnerObject.getIntegerProperty(), is(equalTo(patch.getInnerTestObjectProperty().getIntegerProperty())));
         assertThat(patchedInnerObject.getDoubleProperty(), is(equalTo(origin.getInnerTestObjectProperty().getDoubleProperty())));
@@ -435,7 +601,7 @@ class CloneUtilsTest {
     }
 
     @Test
-    public void shouldPatchListProperties() throws Exception {
+    public void shouldPatchObjectIncludingListPropertyToDifferentType() throws Exception {
         ArrayList<String> originStringList = new ArrayList<>();
         originStringList.add("value in string list");
 
@@ -477,6 +643,55 @@ class CloneUtilsTest {
         );
 
         TestObject patched = CloneUtils.patch(origin, patch, TestObject.class);
+
+        List<String> patchedStringList = patched.getStringList();
+        assertThat(patchedStringList, hasSize(1));
+        assertThat(patchedStringList.get(0), is(equalTo("patched value in string list")));
+    }
+
+    @Test
+    public void shouldPatchObjectIncludingListPropertyToSameType() throws Exception {
+        ArrayList<String> originStringList = new ArrayList<>();
+        originStringList.add("value in string list");
+
+        TestObject origin = new TestObject(
+                "my string",
+                1234,
+                123.123,
+                1234L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string",
+                        4321,
+                        52.72,
+                        null,
+                        null
+                ),
+                originStringList
+        );
+
+        ArrayList<String> patchStringList = new ArrayList<>();
+        patchStringList.add("patched value in string list");
+
+        TestObject patch = new TestObject(
+                "my string patched",
+                1234,
+                123.123,
+                1234L,
+                null,
+                null,
+                new TestObject.InnerTestObject(
+                        "my other string",
+                        4321,
+                        52.72,
+                        null,
+                        null
+                ),
+                patchStringList
+        );
+
+        TestObject patched = CloneUtils.patch(origin, patch);
 
         List<String> patchedStringList = patched.getStringList();
         assertThat(patchedStringList, hasSize(1));
